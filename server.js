@@ -130,6 +130,10 @@ const LocationSchema = new Schema({
     type: String,
     required: true,
   },
+  coordinates: {
+		lat: Number,
+		lng: Number,
+	},
   createdAt: {
     type: Date,
     default: () => new Date()
