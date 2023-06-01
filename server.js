@@ -195,6 +195,26 @@ app.delete("/locations/:id", async (req, res) => {
   }
 });
 
+// Edit location
+app.patch("/locations/:id/edit", async (req, res) => {
+  const { id } = req.params;
+  const { location } = req.body;
+  try {
+    const editLocation = await Location.findByIdAndUpdate(id, { location: location }, { new: true });
+    res.status(201).json({
+      success: true,
+      response: editLocation,
+      message: "edited successfully"
+    });
+  } catch(e) {
+    res.status(400).json({
+      success: false,
+      response: e,
+      message: "error occured, could not edit location"
+    });
+  }
+});
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
