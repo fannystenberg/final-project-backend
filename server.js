@@ -126,14 +126,17 @@ const authenticateUser = async (req, res, next) => {
 
 // The location model
 const LocationSchema = new Schema({
+  title: {
+    type: String,
+    required: true,
+  },
   location: {
     type: String,
     required: true,
   },
-  coordinates: {
-		lat: Number,
-		lng: Number,
-	},
+  tag: {
+    type: String,
+  },
   createdAt: {
     type: Date,
     default: () => new Date()
@@ -161,9 +164,9 @@ app.get("/locations", async(req, res) => {
 
 // Post new location
 app.post("/locations", async(req, res) => {
-  const { location } = req.body;
+  const { title, location, tag } = req.body;
   try {
-    const newLocation = await Location({location}).save();
+    const newLocation = await Location({title, location, tag}).save();
     res.status(200).json({
       success: true,
       response: newLocation
@@ -198,9 +201,9 @@ app.delete("/locations/:id", async (req, res) => {
 // Edit location
 app.patch("/locations/:id/edit", async (req, res) => {
   const { id } = req.params;
-  const { location } = req.body;
+  const { title, location, tag } = req.body;
   try {
-    const editLocation = await Location.findByIdAndUpdate(id, { location: location }, { new: true });
+    const editLocation = await Location.findByIdAndUpdate(id, { title: title, location: location, tag: tag }, { new: true });
     res.status(201).json({
       success: true,
       response: editLocation,
