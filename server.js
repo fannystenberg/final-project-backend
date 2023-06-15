@@ -8,14 +8,10 @@ const mongoUrl = process.env.MONGO_URL || "mongodb://localhost/final-project";
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true });
 mongoose.Promise = Promise;
 
-// Defines the port the app will run on. Defaults to 8080, but can be overridden
-// when starting the server. Example command to overwrite PORT env variable value:
-// PORT=9000 npm start
 const port = process.env.PORT || 8080;
 const app = express();
 const listEndPoints = require('express-list-endpoints');
 
-// Add middlewares to enable cors and json body parsing
 app.use(cors());
 app.use(express.json());
 
@@ -38,7 +34,7 @@ const UserSchema = new Schema({
 });
 const User = mongoose.model("User", UserSchema);
 
-// Start defining your routes here
+
 app.get("/", (req, res) => {
   res.json(listEndPoints(app));
 });
@@ -60,7 +56,7 @@ app.post("/signup", async (req, res) => {
         response: {
           username: newUser.username,
           accessToken: newUser.accessToken,
-          userId: newUser._id
+          id: newUser._id
         }
       });
     };
@@ -83,7 +79,7 @@ app.post("/signin", async (req, res) => {
         response: {
           username: user.username,
           accessToken: user.accessToken,
-          userId: user._id
+          id: user._id
         }
       });
     } else {
@@ -106,7 +102,6 @@ const authenticateUser = async (req, res, next) => {
   try {
     const user = await User.findOne({ accessToken: req.header("Authorization") });
     if (user) {
-      req.user = user;
       next();
     } else {
       res.status(401).json({
@@ -124,10 +119,6 @@ const authenticateUser = async (req, res, next) => {
 
 // The location model
 const LocationSchema = new Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
   title: {
     type: String,
     required: true,
@@ -146,15 +137,14 @@ const LocationSchema = new Schema({
 });
 const Location = mongoose.model("Location", LocationSchema);
 
-// Post new location
-app.post("/locations", authenticateUser, async(req, res) => {
-  const { title, location, tag } = req.body;
-  const { user } = req.user;
+// Secret endpoint that only can be accessed when logged in as a user
+app.get("/locations", authenticateUser);
+app.get("/locations", async(req, res) => {
   try {
-    const newLocation = await Location({ user, title, location, tag}).save();
+    const locations = await Location.find().sort({createdAt: 'desc'}).exec();
     res.status(200).json({
       success: true,
-      response: newLocation
+      response: locations
     });
   } catch(e) {
     res.status(400).json({
@@ -164,21 +154,15 @@ app.post("/locations", authenticateUser, async(req, res) => {
   }
 });
 
-// Get all locations
-app.get("/locations", authenticateUser, async(req, res) => {
+// Post new location
+app.post("/locations", async(req, res) => {
+  const { title, location, tag } = req.body;
   try {
-    if (req.user) {
-      const locations = await Location.find({ user: mongoose.Types.ObjectId(req.user.id)}).sort({ createdAt: -1 });
-      res.status(200).json({
-        success: true,
-        response: locations
-      });
-    } else {
-      res.status(404).json({
-        success: false,
-        respone: 'Locations not found'
-      });
-    }
+    const newLocation = await Location({title, location, tag}).save();
+    res.status(200).json({
+      success: true,
+      response: newLocation
+    });
   } catch(e) {
     res.status(400).json({
       success: false,
