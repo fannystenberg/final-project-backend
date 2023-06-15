@@ -60,7 +60,7 @@ app.post("/signup", async (req, res) => {
         response: {
           username: newUser.username,
           accessToken: newUser.accessToken,
-          id: newUser._id
+          userId: newUser._id
         }
       });
     };
@@ -83,7 +83,7 @@ app.post("/signin", async (req, res) => {
         response: {
           username: user.username,
           accessToken: user.accessToken,
-          id: user._id
+          userId: user._id
         }
       });
     } else {
@@ -107,6 +107,7 @@ const authenticateUser = async (req, res, next) => {
     // Looks up the user based on the accessToken stored in the header
     const user = await User.findOne({ accessToken: req.header("Authorization") });
     if (user) {
+      req.user = user
       // Allows the protected endpoint to continue exec.
       next();
     } else {
@@ -126,6 +127,10 @@ const authenticateUser = async (req, res, next) => {
 
 // The location model
 const LocationSchema = new Schema({
+  user: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
   title: {
     type: String,
     required: true,
@@ -148,12 +153,18 @@ const Location = mongoose.model("Location", LocationSchema);
 app.get("/locations", authenticateUser);
 app.get("/locations", async(req, res) => {
   try {
-    // Returns a maximum of 20 locations and shows the most recent first
-    const locations = await Location.find().sort({createdAt: 'desc'}).limit(20).exec();
-    res.status(200).json({
-      success: true,
-      response: locations
-    });
+    if (req.user) {
+      const locations = await Location.find({ user: mongoose.Types.ObjectId(req.user.id)}).sort({ createdAt: -1 });
+      res.status(200).json({
+        success: true,
+        response: locations
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        respone: 'Locations not found'
+      });
+    }
   } catch(e) {
     res.status(400).json({
       success: false,
@@ -165,8 +176,9 @@ app.get("/locations", async(req, res) => {
 // Post new location
 app.post("/locations", async(req, res) => {
   const { title, location, tag } = req.body;
+  const { user } = req.user;
   try {
-    const newLocation = await Location({title, location, tag}).save();
+    const newLocation = await Location({ user, title, location, tag}).save();
     res.status(200).json({
       success: true,
       response: newLocation
