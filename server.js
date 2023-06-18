@@ -63,7 +63,7 @@ app.post("/signup", async (req, res) => {
   } catch (e) {
     res.status(400).json({
       success: false,
-      response: "Could not create user"
+      response: "Could not create user, username already exists"
     });
   }
 });
@@ -85,7 +85,7 @@ app.post("/signin", async (req, res) => {
     } else {
       res.status(200).json({
         success: false,
-        response: "User not found"
+        response: "User not found, incorrect username or password"
       });
     }
   } catch (e) {
@@ -133,6 +133,10 @@ const LocationSchema = new Schema({
   createdAt: {
     type: Date,
     default: () => new Date()
+  },
+  user: {
+    type: String,
+    requried: true
   }
 });
 const Location = mongoose.model("Location", LocationSchema);
@@ -141,7 +145,8 @@ const Location = mongoose.model("Location", LocationSchema);
 app.get("/locations", authenticateUser);
 app.get("/locations", async(req, res) => {
   try {
-    const locations = await Location.find().sort({createdAt: 'desc'}).exec();
+    const user = await User.findOne({ accessToken: req.header("Authorization") });
+    const locations = await Location.find({ user: user._id }).sort({createdAt: 'desc'}).exec();
     res.status(200).json({
       success: true,
       response: locations
@@ -155,10 +160,12 @@ app.get("/locations", async(req, res) => {
 });
 
 // Post new location
+app.post("/locations", authenticateUser);
 app.post("/locations", async(req, res) => {
   const { title, location, tag } = req.body;
   try {
-    const newLocation = await Location({title, location, tag}).save();
+    const user = await User.findOne({ accessToken: req.header("Authorization") });
+    const newLocation = await Location({title, location, tag, user: user._id}).save();
     res.status(200).json({
       success: true,
       response: newLocation
@@ -172,40 +179,58 @@ app.post("/locations", async(req, res) => {
 });
 
 // Delete location
+app.delete("/locations/:id", authenticateUser);
 app.delete("/locations/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    const newLocation = await Location.findByIdAndRemove(id);
-    res.status(201).json({
-      success: true,
-      response: newLocation,
-      message: "deleted successfully"
-    });
+    const user = await User.findOne({ accessToken: req.header("Authorization") });
+    const theLocation = await Location.findOne({ id, user: user._id });
+    if (theLocation) {
+      await theLocation.remove();
+      res.status(201).json({
+        success: true,
+        response: theLocation,
+        message: "Deleted successfully"
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        response: "Location not found"
+      });
+    }
   } catch(e) {
     res.status(400).json({
       success: false,
-      response: e,
-      message: "something went wrong, could not delete"
+      response: e
     });
   }
 });
 
 // Edit location
+app.patch("/locations/:id/edit", authenticateUser);
 app.patch("/locations/:id/edit", async (req, res) => {
   const { id } = req.params;
   const { title, location, tag } = req.body;
   try {
-    const editLocation = await Location.findByIdAndUpdate(id, { title: title, location: location, tag: tag }, { new: true });
-    res.status(201).json({
-      success: true,
-      response: editLocation,
-      message: "edited successfully"
-    });
+    const user = await User.findOne({ accessToken: req.header("Authorization") });
+    const theLocation = await Location.findOne({ id, user: user._id });
+    if (theLocation) {
+      const editLocation = await Location.findByIdAndUpdate(id, { title: title, location: location, tag: tag }, { new: true });
+      res.status(201).json({
+        success: true,
+        response: editLocation,
+        message: "edited successfully"
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        response: "Location not found"
+      });
+    }
   } catch(e) {
     res.status(400).json({
       success: false,
-      response: e,
-      message: "error occured, could not edit location"
+      response: e
     });
   }
 });
