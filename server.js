@@ -130,6 +130,10 @@ const LocationSchema = new Schema({
   tag: {
     type: String,
   },
+  visited: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: () => new Date()
