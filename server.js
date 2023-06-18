@@ -214,12 +214,16 @@ app.delete("/locations/:id", async (req, res) => {
 app.patch("/locations/:id/edit", authenticateUser);
 app.patch("/locations/:id/edit", async (req, res) => {
   const { id } = req.params;
-  const { title, location, tag } = req.body;
+  const { title, location, tag, visited } = req.body;
   try {
     const user = await User.findOne({ accessToken: req.header("Authorization") });
     const theLocation = await Location.findOne({ id, user: user._id });
     if (theLocation) {
-      const editLocation = await Location.findByIdAndUpdate(id, { title: title, location: location, tag: tag }, { new: true });
+      const editLocation = await Location.findByIdAndUpdate(
+        id,
+        { title: title, location: location, tag: tag, visited: visited },
+        { new: true }
+        );
       res.status(201).json({
         success: true,
         response: editLocation,
